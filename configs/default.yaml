@@ -1,0 +1,12 @@
+paths:
+  input_video: data/raw/input.mp4
+  clip_video: data/interim/clip/clip.mp4
+  clip_audio: data/interim/clip/clip.wav
+
+clip:
+  start: "00:00:15"
+  duration: 15
+
+audio:
+  sample_rate: 16000
+  channels: 1

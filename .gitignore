@@ -1,9 +1,9 @@
 __pycache__/
 *.pyc
-.ipynb_checkpoints/
-.env
-.env.*
 .DS_Store
+.ipynb_checkpoints/
+.venv/
+.env
 logs/
 data/raw/
 data/interim/
