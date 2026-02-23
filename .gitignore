@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.env
+.env.*
+.DS_Store
+logs/
+data/raw/
+data/interim/
+data/processed/
+assets/outputs/
