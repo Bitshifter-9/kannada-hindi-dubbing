@@ -2,6 +2,7 @@ paths:
   input_video: data/raw/input.mp4
   clip_video: data/interim/clip/clip.mp4
   clip_audio: data/interim/clip/clip.wav
+  scenes_json: data/interim/scenes/scenes.json
 
 clip:
   start: "00:00:15"
@@ -10,3 +11,7 @@ clip:
 audio:
   sample_rate: 16000
   channels: 1
+
+scene:
+  threshold: 0.30
+  min_scene_len: 0.80
