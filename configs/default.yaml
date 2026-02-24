@@ -32,4 +32,4 @@ seg:
 asr:
   bin: auto
   model: assets/models/whisper/ggml-small.bin
-  lang: kn
+  lang: en
