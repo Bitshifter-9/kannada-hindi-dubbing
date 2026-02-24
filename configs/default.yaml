@@ -4,6 +4,7 @@ paths:
   clip_audio: data/interim/clip/clip.wav
   scenes_json: data/interim/scenes/scenes.json
   segments_json: data/interim/segments/segments.json
+  asr_json: data/interim/asr/asr.json
 
 clip:
   start: "00:00:15"
@@ -27,3 +28,8 @@ seg:
   min_len: 1.0
   max_len: 4.0
   gap: 0.35
+
+asr:
+  bin: auto
+  model: assets/models/whisper/ggml-small.bin
+  lang: kn
