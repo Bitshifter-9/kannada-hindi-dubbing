@@ -104,6 +104,51 @@ def merge_by_gap(segs, gap, max_len):
     return out
 
 
+def force_split_long(segs, max_len, wav, sr):
+    """Split any segment longer than max_len at the lowest-energy point."""
+    out = []
+    for seg in segs:
+        dur = seg["end"] - seg["start"]
+        if dur <= max_len:
+            out.append(seg)
+            continue
+        # recursively split at the quietest point
+        stack = [seg]
+        while stack:
+            s = stack.pop(0)
+            d = s["end"] - s["start"]
+            if d <= max_len:
+                out.append(s)
+                continue
+            # find lowest-energy 50ms frame in the middle 80% of the segment
+            s0 = int(s["start"] * sr)
+            s1 = int(s["end"] * sr)
+            margin = int((s1 - s0) * 0.10)
+            search_start = s0 + margin
+            search_end = s1 - margin
+            frame = int(0.05 * sr)  # 50ms
+            if search_end - search_start < frame:
+                out.append(s)
+                continue
+            best_e = float("inf")
+            best_i = (search_start + search_end) // 2
+            i = search_start
+            while i + frame <= search_end:
+                chunk = wav[i:i + frame]
+                e = float(np.sum(chunk * chunk))
+                if e < best_e:
+                    best_e = e
+                    best_i = i
+                i += frame // 2  # 25ms hop
+            split_t = round(best_i / sr, 3)
+            left = {"start": s["start"], "end": split_t, "scene": s["scene"]}
+            right = {"start": split_t, "end": s["end"], "scene": s["scene"]}
+            stack.insert(0, left)
+            stack.insert(1, right)
+    out.sort(key=lambda x: x["start"])
+    return out
+
+
 def make_segments(wav_path, scenes_path, out_json, th, min_sp, min_sil, pad, min_len, max_len, gap):
     wav, sr = read_wav(wav_path)
     if sr != 16000:
@@ -120,6 +165,7 @@ def make_segments(wav_path, scenes_path, out_json, th, min_sp, min_sil, pad, min
             raw.append({"start": round(st, 3), "end": round(en, 3)})
     segs = split_on_scenes(raw, scenes)
     segs = merge_by_gap(segs, gap, max_len)
+    segs = force_split_long(segs, max_len, wav, sr)
     final = []
     i = 0
     for seg in segs:

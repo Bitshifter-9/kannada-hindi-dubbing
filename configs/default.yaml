@@ -22,8 +22,8 @@ scene:
 vad:
   threshold: 0.5
   min_speech_ms: 250
-  min_silence_ms: 200
-  pad_ms: 50
+  min_silence_ms: 100
+  pad_ms: 30
 
 seg:
   min_len: 1.0

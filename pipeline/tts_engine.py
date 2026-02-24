@@ -49,6 +49,27 @@ if not os.path.exists(td):
 
 tts=TTS(model_name=a.model,progress_bar=False,gpu=bool(a.gpu))
 
+def build_atempo_chain(ratio):
+    """Build chained atempo filters. Cap at 1.8x to preserve clarity."""
+    if ratio < 0.5:
+        ratio = 0.5
+    if ratio > 1.8:
+        ratio = 1.8  # Cap to preserve intelligibility
+    filters = []
+    r = ratio
+    while r > 2.0:
+        filters.append("atempo=2.0")
+        r /= 2.0
+    while r < 0.5:
+        filters.append("atempo=0.5")
+        r /= 0.5
+    filters.append("atempo=" + str(round(r, 5)))
+    return ",".join(filters)
+
+def estimate_speed(text, target_dur):
+    """Return 1.0 for natural-pace speech. Let atempo handle fitting."""
+    return 1.0
+
 out=[]
 for s in it:
     i=int(s.get("id",0))
@@ -75,13 +96,15 @@ for s in it:
                 print(r.stderr.decode("utf-8",errors="ignore"))
                 sys.exit(1)
         else:
-            tts.tts_to_file(text=tx,speaker_wav=a.ref,language=a.lang,file_path=raw)
-            r=subprocess.run(["ffmpeg","-y","-i",raw,"-ac","1","-ar",str(a.sr),rs],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
-            if r.returncode!=0:
-                print("ffmpeg resample failed:",i)
-                print(r.stderr.decode("utf-8",errors="ignore"))
-                sys.exit(1)
-            r=subprocess.run(["ffmpeg","-y","-i",rs,"-af","silenceremove=start_periods=1:start_silence=0.10:start_threshold=-35dB:stop_periods=1:stop_silence=0.10:stop_threshold=-35dB","-ac","1","-ar",str(a.sr),tr],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+            # Estimate speed so TTS output is closer to target duration
+            spd = estimate_speed(tx, tg)
+            print(f"  seg {i}: target={tg}s, speed={spd}")
+            tts.tts_to_file(text=tx,speaker_wav=a.ref,language=a.lang,file_path=raw,speed=spd)
+            # Only trim leading/trailing silence gently (-50dB threshold, keep internal speech intact)
+            r=subprocess.run(["ffmpeg","-y","-i",raw,"-af",
+                "silenceremove=start_periods=1:start_silence=0.05:start_threshold=-50dB,"
+                "areverse,silenceremove=start_periods=1:start_silence=0.05:start_threshold=-50dB,areverse",
+                "-ac","1",tr],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
             if r.returncode!=0:
                 print("ffmpeg trim failed:",i)
                 print(r.stderr.decode("utf-8",errors="ignore"))
@@ -100,10 +123,11 @@ for s in it:
             if tg>0.01 and gd>0.01:
                 rt=gd/tg
 
-            if tg>0.01 and gd>0.01 and abs(gd-tg)>0.05 and rt>=0.80 and rt<=1.25:
-                r=subprocess.run(["ffmpeg","-y","-i",tr,"-af","atempo="+str(round(rt,5)),"-ac","1","-ar",str(a.sr),sp],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+            if tg>0.01 and gd>0.01 and abs(gd-tg)>0.05:
+                af_chain = build_atempo_chain(rt)
+                r=subprocess.run(["ffmpeg","-y","-i",tr,"-af",af_chain,"-ac","1",sp],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
                 if r.returncode!=0:
-                    print("ffmpeg atempo failed:",i)
+                    print("ffmpeg atempo failed:",i,"filter:",af_chain)
                     print(r.stderr.decode("utf-8",errors="ignore"))
                     sys.exit(1)
                 r=subprocess.run(["ffmpeg","-y","-i",sp,"-af","apad","-t",str(tg),"-ac","1","-ar",str(a.sr),fp],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
