@@ -5,6 +5,7 @@ paths:
   scenes_json: data/interim/scenes/scenes.json
   segments_json: data/interim/segments/segments.json
   asr_json: data/interim/asr/asr.json
+  tr_json: data/interim/tr/tr.json
 
 clip:
   start: "00:00:15"
@@ -32,4 +33,14 @@ seg:
 asr:
   bin: auto
   model: assets/models/whisper/ggml-small.bin
-  lang: en
+  lang: auto
+  task: translate
+  no_gpu: true
+  prompt: ""
+  redo: false
+
+tr:
+  model: Helsinki-NLP/opus-mt-en-hi
+  wps: 2.6
+  beams: 4
+  max_len: 256

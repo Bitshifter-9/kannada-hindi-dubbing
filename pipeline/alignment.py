@@ -3,8 +3,12 @@ import json
 import os
 import re
 import subprocess
+import sys
 import wave
 import numpy as np
+
+# Ensure project root is on sys.path when running this file directly
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from utils.ffmpeg_utils import ensure_parent_dir, require_cmd
 
@@ -72,11 +76,19 @@ def clean_txt(s):
     out = re.sub(r"\s+", " ", out).strip()
     return out
 
-def run_whisper(bin_name, model, lang, wav, out_base):
+def run_whisper(bin_name, model, lang, task, wav, out_base, no_gpu, prompt):
     if not os.path.exists(model):
         raise RuntimeError("Missing model file: " + model)
     ensure_parent_dir(out_base)
-    cmd = [bin_name, "-m", model, "-f", wav, "-l", lang, "-otxt", "-of", out_base]
+    cmd = [bin_name]
+    if no_gpu:
+        cmd.append("-ng")
+    cmd += ["-m", model, "-f", wav, "-l", lang]
+    if task == "translate":
+        cmd.append("-tr")
+    if prompt:
+        cmd += ["--prompt", prompt]
+    cmd += ["-otxt", "-of", out_base]
     p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if p.returncode != 0:
         raise RuntimeError("Whisper failed:\n" + p.stderr.decode("utf-8", errors="replace"))
@@ -95,7 +107,7 @@ def read_txt(out_base):
         return s
     return ""
 
-def transcribe_segments(wav_path, seg_json, out_json, bin_name, model, lang):
+def transcribe_segments(wav_path, seg_json, out_json, bin_name, model, lang, task, no_gpu, prompt, redo):
     segs = load_json(seg_json)
     a, sr = read_wav_i16(wav_path)
     b = pick_bin(bin_name)
@@ -113,8 +125,8 @@ def transcribe_segments(wav_path, seg_json, out_json, bin_name, model, lang):
         seg_wav = "data/interim/asr/wav/seg_" + str(i).zfill(4) + ".wav"
         out_base = "data/interim/asr/txt/seg_" + str(i).zfill(4)
         write_wav_i16(seg_wav, wseg, sr)
-        if not os.path.exists(out_base + ".txt"):
-            run_whisper(b, model, lang, seg_wav, out_base)
+        if redo or (not os.path.exists(out_base + ".txt")):
+            run_whisper(b, model, lang, task, seg_wav, out_base, no_gpu, prompt)
         txt = clean_txt(read_txt(out_base))
         out.append({"id": i, "scene": int(seg["scene"]), "start": st, "end": en, "text": txt})
     ensure_parent_dir(out_json)
@@ -130,9 +142,15 @@ def main():
     p.add_argument("--out", required=True)
     p.add_argument("--bin", default="auto")
     p.add_argument("--model", required=True)
-    p.add_argument("--lang", default="kn")
+    p.add_argument("--lang", default="auto")
+    p.add_argument("--task", default="transcribe")
+    p.add_argument("--no_gpu", action="store_true")
+    p.add_argument("--prompt", default="")
+    p.add_argument("--redo", action="store_true")
     a = p.parse_args()
-    r = transcribe_segments(a.wav, a.segs, a.out, a.bin, a.model, a.lang)
+    if a.task not in ["transcribe", "translate"]:
+        raise RuntimeError("Bad --task: " + a.task)
+    r = transcribe_segments(a.wav, a.segs, a.out, a.bin, a.model, a.lang, a.task, bool(a.no_gpu), a.prompt.strip(), bool(a.redo))
     print("ASR items:", len(r))
     print("Output:", a.out)
 

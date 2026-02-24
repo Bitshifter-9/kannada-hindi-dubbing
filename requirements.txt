@@ -5,4 +5,4 @@ torchaudio
 packaging
 transformers
 sentencepiece
-
+sacremoses
