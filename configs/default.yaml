@@ -3,6 +3,7 @@ paths:
   clip_video: data/interim/clip/clip.mp4
   clip_audio: data/interim/clip/clip.wav
   scenes_json: data/interim/scenes/scenes.json
+  segments_json: data/interim/segments/segments.json
 
 clip:
   start: "00:00:15"
@@ -15,3 +16,14 @@ audio:
 scene:
   threshold: 0.30
   min_scene_len: 0.80
+
+vad:
+  threshold: 0.5
+  min_speech_ms: 250
+  min_silence_ms: 200
+  pad_ms: 50
+
+seg:
+  min_len: 1.0
+  max_len: 4.0
+  gap: 0.35

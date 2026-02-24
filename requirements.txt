@@ -1,1 +1,5 @@
 pyyaml==6.0.2
+numpy
+torch
+torchaudio
+packaging
