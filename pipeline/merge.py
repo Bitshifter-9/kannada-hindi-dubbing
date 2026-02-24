@@ -84,12 +84,8 @@ for idx, seg in enumerate(segs):
 # Mix all delayed segments with the base
 mix_inputs = "[0]" + "".join(f"[d{i}]" for i in range(len(segs)))
 filter_parts.append(
-    f"{mix_inputs}amix=inputs={len(segs) + 1}:duration=first:normalize=0[tts]"
+    f"{mix_inputs}amix=inputs={len(segs) + 1}:duration=first:normalize=0,volume=1.00,alimiter=limit=0.95[out]"
 )
-
-# Boost the TTS track (amix divides by number of inputs)
-boost = len(segs) + 1
-filter_parts.append(f"[tts]volume={boost}[out]")
 
 filter_str = ";\n".join(filter_parts)
 
@@ -124,7 +120,7 @@ if args.bg_vol > 0:
         "-filter_complex",
         f"[0:a]volume={args.bg_vol},aresample={args.sr}[bg];"
         f"[1:a]aresample={args.sr}[fg];"
-        f"[bg][fg]amix=inputs=2:duration=first:normalize=0,volume=2.0[aout]",
+        f"[bg][fg]amix=inputs=2:duration=first:normalize=0,alimiter=limit=0.95[aout]",
         "-map", "0:v",
         "-map", "[aout]",
         "-c:v", "copy",
